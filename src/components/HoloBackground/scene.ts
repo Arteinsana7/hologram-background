@@ -14,6 +14,8 @@ const geometry = new THREE.PlaneGeometry(2,2)
 const material = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
+      // added mouse position to the shader to start to move the hologram effect : center of the screen.
+    //   uMouse : { value : new THREE.Vector2(0.5, 0.5)},
     },
     vertexShader: `
       varying vec2 vUv;
@@ -23,14 +25,43 @@ const material = new THREE.ShaderMaterial({
       }
     `,
     fragmentShader: `
-      uniform float uTime;
-      varying vec2 vUv;
-      void main() {
-        vec3 colorA = vec3(0.5, 0.0, 1.0);
-        vec3 colorB = vec3(0.0, 1.0, 0.8);
-        vec3 color = mix(colorA, colorB, vUv.x + sin(uTime) * 0.5);
-        gl_FragColor = vec4(color, 1.0);
-      }
+     uniform float uTime;
+varying vec2 vUv;
+
+float noise(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float smoothNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+
+  float a = noise(i);
+  float b = noise(i + vec2(1.0, 0.0));
+  float c = noise(i + vec2(0.0, 1.0));
+  float d = noise(i + vec2(1.0, 1.0));
+
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+void main() {
+  vec2 uv = vUv;
+  
+  float n = smoothNoise(uv * 4.0 + uTime * 0.2);
+  
+  float r = sin(uv.x * 3.0 + uTime * 0.8 + n * 2.0) * 0.5 + 0.5;
+  float g = sin(uv.y * 3.0 + uTime * 0.6 + n * 2.0 + 2.0) * 0.5 + 0.5;
+  float b = sin((uv.x + uv.y) * 3.0 + uTime * 0.4 + n * 2.0 + 4.0) * 0.5 + 0.5;
+  
+// background a litle more transparent to get closer to an hologram effect
+//   vec3 color = vec3(r, g, b);
+//   gl_FragColor = vec4(color, 1.0);
+
+vec3 color = vec3(r, g, b) * 0.6;  // reduce the intensity
+gl_FragColor = vec4(color, 0.7); 
+}
+
     `,
   })
 
@@ -39,7 +70,7 @@ scene.add(mesh)
 
 const animate = () => {
     requestAnimationFrame(animate)
-    material.uniforms.uTime.value += 0.01
+    material.uniforms.uTime.value += 0.03
     renderer.render(scene, camera)
 }
 animate()
@@ -50,10 +81,16 @@ const onResize = ()=> {
 
 window.addEventListener('resize', onResize)
 
-return () => {
-    cancelAnimationFrame(0)
-    window.removeEventListener('resize', onResize)
-    renderer.dispose()
-}
-}
+// const onMouseMove = (e: MouseEvent) => {
+//     material.uniforms.uMouse.value.x = e.clientX / window.innerWidth;
+//     material.uniforms.uMouse.value.y = e.clientY / window.innerHeight;
+// }
+// window.addEventListener('mousemove', onMouseMove)
 
+return () => {
+    cancelAnimationFrame(0);
+    window.removeEventListener('resize', onResize);
+    // window.removeEventListener('mousemove', onMouseMove);
+    renderer.dispose();
+};
+};
