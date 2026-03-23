@@ -4,7 +4,6 @@ import * as THREE from 'three';
 
 export function initScene( canvas: HTMLCanvasElement){
 const renderer = new THREE.WebGLRenderer({canvas, alpha : true})
-renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 const scene = new THREE.Scene();
@@ -25,8 +24,8 @@ const material = new THREE.ShaderMaterial({
       }
     `,
     fragmentShader: `
-     uniform float uTime;
-varying vec2 vUv;
+    uniform float uTime;
+    varying vec2 vUv;
 
 float noise(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -68,18 +67,22 @@ gl_FragColor = vec4(color, 0.7);
 const mesh = new THREE.Mesh(geometry, material )
 scene.add(mesh)
 
+let rafId : number
+
 const animate = () => {
-    requestAnimationFrame(animate)
+    rafId =requestAnimationFrame(animate)
     material.uniforms.uTime.value += 0.03
     renderer.render(scene, camera)
 }
 animate()
 
-const onResize = ()=> {
-    renderer.setSize(window.innerWidth, window.innerHeight)
-}
 
-window.addEventListener('resize', onResize)
+
+const observer = new ResizeObserver(()=>{
+    renderer.setSize(canvas.offsetWidth, canvas.offsetHeight)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+})
+observer.observe(canvas)
 
 // const onMouseMove = (e: MouseEvent) => {
 //     material.uniforms.uMouse.value.x = e.clientX / window.innerWidth;
@@ -88,8 +91,8 @@ window.addEventListener('resize', onResize)
 // window.addEventListener('mousemove', onMouseMove)
 
 return () => {
-    cancelAnimationFrame(0);
-    window.removeEventListener('resize', onResize);
+    cancelAnimationFrame(rafId);
+    observer.disconnect()
     // window.removeEventListener('mousemove', onMouseMove);
     renderer.dispose();
 };
